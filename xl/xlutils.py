@@ -12,7 +12,7 @@ import logging
 import openpyxl
 
 from openpyxl.utils import get_column_letter, column_index_from_string
-from openpyxl.styles import PatternFill, Border,
+from openpyxl.styles import PatternFill, Border
 from openpyxl.styles import Side, Alignment, Protection, Font
 from openpyxl.workbook.defined_name import DefinedName,DefinedNameList
 from openpyxl.worksheet.table import Table, TableStyleInfo
@@ -104,12 +104,14 @@ class XLUtil:
             print('\n{0}- Directory does not exist\n'.format(head))
 
             
-    def save_workbook(self, fileName=self.xlFile):
+    def save_workbook(self, fileName=None):
         '''Save the excel workbook
 
         Give the fileName to save under
         default is xlFile name picked from excel path
         '''
+        if fileName is None:
+            fileName=self.xlFile
         print("Saving {0}".format(fileName))
         self.workbook.save(fileName)
 
@@ -400,3 +402,4 @@ UNDER CONSTRUCTION
                     fill = whiteFill
                 self.format_row(startCol, startRow+1+i, numCols,
                                 algn=centerAlign, fll=fill)
+'''
