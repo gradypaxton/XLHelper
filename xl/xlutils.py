@@ -4,7 +4,7 @@ Author: G. Paxton
 Purpose: To aid in reading/writing excel files
 Revision: March 2018
 '''
-
+###############################################################################
 import sys
 import os
 import logging
@@ -21,50 +21,45 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 '''
 Fonts
 '''
-defaultFont = Font(name='Calibri', size=11, bold=False,
-                   italic=False, vertAlign=None, underline='none',
-                   strike=False, color='FF000000')
+FONT = Font(name='Calibri', size=11, bold=False, italic=False,
+            vertAlign=None, underline='none', strike=False,
+            color='FF000000')
+FONT_BOLD = Font(bold=True)
 '''
 Fills
 '''
-defaultFill = PatternFill(fill_type=None, start_color='FFFFFFFF',
-                          end_color='FF000000')
-
+FILL = PatternFill(fill_type=None, start_color='FFFFFFFF',
+                   end_color='FF000000')
+FILL_GREY = PatternFill('solid', fgColor='DDDDDD')
+FILL_WHITE = PatternFill('solid', fgColor='FFFFFF')
 '''
 Alignment
 '''
-defaultAlign=Alignment(horizontal='general', vertical='bottom',
+ALIGN =Alignment(horizontal='general', vertical='bottom',
                  text_rotation=0, wrap_text=False,
                  shrink_to_fit=False, indent=0)
-centerAlign = Alignment(horizontal="center", vertical="center")
+ALIGN_CENTER = Alignment(horizontal="center", vertical="center")
 
 '''
 Format
 '''
-defaultFormat = 'General'
-commaFormat = '#,##0.00'
+FORMAT = 'General'
+FORMAT_COMMA = '#,##0.00'
 
 '''
 Borders
 '''
-defaultBorder = Border(left=Side(border_style=None,
-                          color='FF000000'),
-                right=Side(border_style=None,
-                           color='FF000000'),
-                top=Side(border_style=None,
-                         color='FF000000'),
-                bottom=Side(border_style=None,
-                            color='FF000000'),
-                diagonal=Side(border_style=None,
-                              color='FF000000'),
+BORDER = Border(left=Side(border_style=None, color='FF000000'),
+                right=Side(border_style=None,color='FF000000'),
+                top=Side(border_style=None,color='FF000000'),
+                bottom=Side(border_style=None, color='FF000000'),
+                diagonal=Side(border_style=None, color='FF000000'),
                 diagonal_direction=0,
-                outline=Side(border_style=None,
-                             color='FF000000'),
-                vertical=Side(border_style=None,
-                              color='FF000000'),
-                horizontal=Side(border_style=None,
-                               color='FF000000')
+                outline=Side(border_style=None, color='FF000000'),
+                vertical=Side(border_style=None, color='FF000000'),
+                horizontal=Side(border_style=None, color='FF000000')
                )
+
 
 # CLASS
 class XLUtil:
@@ -116,6 +111,20 @@ class XLUtil:
         self.workbook.save(fileName)
 
 
+    # WORKSHEET METHODS
+    def get_sheets(self):
+        """Return a list of all the worksheets
+        """
+        return self.workbook.sheetnames
+
+    
+    def get_active_sheet(self):
+        """Return the active worksheet
+
+        """
+        return self.worksheet
+
+    
     def make_sheet(self, sheetName, index=0):
         """Create a new worksheet
 
@@ -124,17 +133,11 @@ class XLUtil:
         """
         self.workbook.create_sheet(sheetName, index)
 
-
-    def get_sheets(self):
-        """Return a list of all the worksheets
-        """
-        return self.workbook.sheetnames
-
     
     def select_sheet(self, sheetName):
         """Set the sheetName as the active worksheet
         """
-        if sheetName not in get_sheets():
+        if sheetName not in self.get_sheets():
             make_sheet(sheetname)
             
         self.worksheet = self.workbook[sheetName]
@@ -143,10 +146,11 @@ class XLUtil:
     def remove_sheet(self, sheetName):
         """Remove the sheet from the workbook
         """
-        if sheetName in get_sheets():
+        if sheetName in self.get_sheets():
             self.workbook.remove(self.workbook[sheetName])
 
-            
+
+    # READING AND WRITING METHODS
     def write(self, column, row, value):
         """Write to a cell in the active sheet
 
@@ -155,105 +159,118 @@ class XLUtil:
         @param value : data to write to cell
         """
         self.worksheet.cell(row=row, column=column).value = value
+
+        
+    def read(self, column, row):
+        """Read from a cell in the active sheet
+
+        @param column : column value as a number (col A = 1)
+        @param row : row value as a number
+        """
+        return self.worksheet.cell(row=row, column=column).value
+
+    
+    def write_row(self, column, row, values):
+        """Write to the cells in a row
+
+        @param column : the first column to write
+        @param row : the row in which to write
+        @param values : a list of values to write
+        """
+        for i in range(len(values)):
+            self.write(column+i, row, values[i])
+
+            
+    def read_row(self, column, row, length):
+        """Read the cells of a row
+
+        @param column : the first column to write
+        @param row : the row in which to write
+        @param length : the number of cells to read
+        """
+        return [self.read(column+i, row) for i in range(length)]
+
+    
+    def write_column(self, column, row, values):
+        """Write to the cells in a columnumn
+
+        @param column : the columnumn to write
+        @param row : the first row in which to write
+        @param values : a list of values to write
+        """
+        for i in range(len(values)):
+            self.write(column, row+i, values[i])
+
+            
+    def read_column(self, column, row, length):
+        """Read the cells of a row
+
+        @param column : the columnumn to read
+        @param row : the first row in which to read
+        @param length : the number of cells to read from
+        """
+        return [self.read(column, row+i) for i in range(length)]
+
+
+    #FORMATING METHODS
+    def style(self, column, row, font=FONT, align=ALIGN,
+               num=FORMAT, fill=FILL):
+        """Style a cell with font, alignment, fill, and format
+
+        """
+        cell = self.worksheet.cell(row=row, column=column)
+        cell.font = font
+        cell.alignment = align
+        cell.number_format = num
+        cell.fill = fill
+
         
 '''
 UNDER CONSTRUCTION
 
 
-    def write_row(self, column, row, values):
-        """Write to the cells in a row
-
-        @param column : column value as a number to start (A = 1)
-        @param row : row value
-
-
-    ##########
-    # write a list of values along a single row
-    ##########
-    def write_row(self, colStart, row, values):
-        for i in range(0, len(values)):
-            self.write_cell(colStart+i, row, values[i])
-
-    ##########
-    # write a list of values along a single column
-    ##########
-    def write_col(self, col, rowStart, values):
-        for i in range(0, len(values)):
-            self.write_cell(col, rowStart+i, values[i])
-
-    ##########
-    # read the value of a cell
-    ##########
-    def read_cell(self, col, row):
-        return self.worksheet.cell(row=row, column=col).value
-
-    ##########
-    # read a list of values from a row of cells
-    ##########
-    def read_row(self, colStart, row, length):
-        data = []
-        for i in range(0, length):
-            data.append(self.read_cell(colStart+i, row))
-        return data
-
-    ##########
-    # read a list of values from a column of cells
-    ##########
-    def read_col(self, col, rowStart, length):
-        data = []
-        for i in range(0, length):
-            data.append(self.read_cell(col, rowStart+i))
-        return data
-
     ##########
     # freeze the top and side panels, specifying their sizes by the corner cell
     ##########
-    def freeze(self, col, row):
-        col_letter = get_column_letter(col)
-        coord = col_letter + str(row)
+    def freeze(self, column, row):
+        column_letter = get_columnumn_letter(column)
+        coord = column_letter + str(row)
 #        print(coord)
         self.worksheet.freeze_panes = coord
 
     ##########
-    # format a cell by applying font, alignment, number style, and color filling
+    # format a cell by applying font, alignment, number style, and columnor filling
     ##########
-    def format_cell(self, col, row,
-                    fnt=dfFont, algn=dfAlgn,
-                    num=dfNum, fll=dfFill):
-        cell = self.worksheet.cell(row=row, column=col)
-        cell.font = fnt
-        cell.alignment = algn
-        cell.number_format = num
-        cell.fill = fll
+    def format_cell(self, column, row,
 
     ##########
     # format an entire row of cells
     ##########
-    def format_row(self, col, row, length,
+    def format_row(self, column, row, length,
                    fnt=dfFont, algn=dfAlgn,
                    num=dfNum, fll=dfFill):
         for i in range(0, length):
-            self.format_cell(col+i, row, fnt, algn, num, fll)
+            self.format_cell(column+i, row, fnt, algn, num, fll)
 
     ##########
-    # format a column of cells
+    # format a columnumn of cells
     ##########
-    def format_col(self, col, row, length,
+    def format_column(self, column, row, length,
                    fnt=dfFont, algn=dfAlgn,
                    num=dfNum, fll=dfFill):
         for i in range(0, length):
-            self.format_cell(col, row+i, fnt, algn, num, fll)
+            self.format_cell(column, row+i, fnt, algn, num, fll)
 
     ##########
-    # set the width of a column, if auto is made true the column will auto size to the largest cell value
+    # set the width of a columnumn, if auto is made true the columnumn will auto size to the largest cell value
     ##########
-    def set_col_width(self, col, w=10, auto=False):
-        col_letter = get_column_letter(col)
-        logging.debug(col_letter)
+    def set_column_width(self, column, w=10, auto=False):
+        column_letter = get_columnumn_letter(column)
+        logging.debug(column_letter)
         if(auto ==True):
             max_length = 0
-            column = self.worksheet[col_letter]
-            for cell in column:
+            columnumn = self.worksheet[column_letter]
+            for cell in columnumn:
                 try: # Necessary to avoid error on empty cells
                     if len(str(cell.value)) > max_length:
                         max_length = len(cell.value)
@@ -263,7 +280,7 @@ UNDER CONSTRUCTION
                 max_length = 50
             adjusted_width = (max_length + 2) * 1.2
             w = adjusted_width            
-        self.worksheet.column_dimensions[col_letter].width = w       
+        self.worksheet.columnumn_dimensions[column_letter].width = w       
 
     ##########
     # return a list of names that were defined for a region of cells
@@ -297,16 +314,16 @@ UNDER CONSTRUCTION
     def build_attr_text(self, coords):
         # active sheet
         text = "$"+self.worksheet.title+"."
-        # starting Col and row
+        # starting Column and row
         text += "$"+coords[0][0] +"$" + coords[0][1] + ":"
-        # ending Col and row
+        # ending Column and row
         text += "$"+coords[1][0] + "$" + coords[1][1]
         logging.debug(text)
         return text
 
     ##########
     # From the defined name attr_text value
-    # Make a list of the sheet the region exists, starting col, starting row, ending col, ending row 
+    # Make a list of the sheet the region exists, starting column, starting row, ending column, ending row 
     ##########
     def debuild_attr_text(self, attr_text):
         logging.debug(attr_text)
@@ -329,18 +346,18 @@ UNDER CONSTRUCTION
     # Create a sortable table and label the region by using the defined name properties
     # if the table already exists, rewrite all values and update the size
     ##########
-    def write_table(self, col, row, tableData, tableName):
+    def write_table(self, column, row, tableData, tableName):
         # table size properties
         numRows = len(tableData)
-        numCols = len(tableData[0])
-        startCoord = [get_column_letter(col),str(row)]
-        endCoord=[get_column_letter(col+numCols-1),
+        numColumns = len(tableData[0])
+        startCoord = [get_columnumn_letter(column),str(row)]
+        endCoord=[get_columnumn_letter(column+numColumns-1),
                   str(row+numRows-1)]
         span =startCoord[0]+startCoord[1]+':'+endCoord[0]+endCoord[1]
         coords = [startCoord, endCoord]
         # write the table
         for i in range(0, numRows):
-            self.write_row(col, row+i, tableData[i])
+            self.write_row(column, row+i, tableData[i])
         # make filterable
 #        self.worksheet.auto_filter.ref = span
 
@@ -362,15 +379,15 @@ UNDER CONSTRUCTION
             foundTable = self.workbook.defined_names[tableName]
             rawCoords=self.debuild_attr_text(foundTable.attr_text)  
             sheet = rawCoords[0]
-            startCol = rawCoords[1]
-            startRow = rawCoords[2]
-            endCol = rawCoords[3]
+            columnumn = rawCoords[1]
+            row = rawCoords[2]
+            endColumn = rawCoords[3]
             endRow = rawCoords[4]
-            col = column_index_from_string(startCol)
+            column = columnumn_index_from_string(columnumn)
             row = int(endRow)+1
-            self.write_row(col, row, rowData)
-            startCoords = [startCol, startRow]
-            endCoords = [endCol, str(row)]
+            self.write_row(column, row, rowData)
+            startCoords = [columnumn, row]
+            endCoords = [endColumn, str(row)]
             coords = [startCoords, endCoords]
             foundTable.attr_text=self.build_attr_text(coords)
 
@@ -382,17 +399,17 @@ UNDER CONSTRUCTION
             foundTable = self.workbook.defined_names[tableName]
             rawCoords=self.debuild_attr_text(foundTable.attr_text)  
             sheet = rawCoords[0]
-            startCol = column_index_from_string(rawCoords[1])
-            startRow = int(rawCoords[2])
-            endCol = column_index_from_string(rawCoords[3])
+            columnumn = columnumn_index_from_string(rawCoords[1])
+            row = int(rawCoords[2])
+            endColumn = columnumn_index_from_string(rawCoords[3])
             endRow = int(rawCoords[4])
-            numCols = endCol - startCol + 1
-            numRows = endRow - startRow + 1
+            numColumns = endColumn - columnumn + 1
+            numRows = endRow - row + 1
             # remove formatting
             for i in range(0, numRows):
-                self.format_row(startCol, startRow, numCols)
+                self.format_row(columnumn, row, numColumns)
             # format header
-            self.format_row(startCol, startRow, numCols,
+            self.format_row(columnumn, row, numColumns,
                             fnt=boldFont, algn=centerAlign)
             # format rows
             for i in range(0, numRows-1):
@@ -400,6 +417,6 @@ UNDER CONSTRUCTION
                     fill = greyFill
                 else:
                     fill = whiteFill
-                self.format_row(startCol, startRow+1+i, numCols,
+                self.format_row(columnumn, row+1+i, numColumns,
                                 algn=centerAlign, fll=fill)
 '''
