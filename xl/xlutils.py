@@ -8,6 +8,7 @@ Revision: March 2018
 import sys
 import os
 import logging
+import re
 
 import openpyxl
 
@@ -64,10 +65,15 @@ BORDER = Border(left=Side(border_style=None, color='FF000000'),
 # CLASS
 class XLUtil:
     '''Class for reading and writing an xlsx file
+
+    This class is particularily good for saving time by incorporating
+    the active worksheet into each function so it doesn't have to 
+    keep being specified
     '''
 
     def __init__(self, excelPath, logFile='XLUtil_log.txt'):
         '''Initialize XL with a path
+
         '''
         self.workbook = openpyxl.Workbook()
         self.worksheet = self.workbook.active
@@ -114,6 +120,7 @@ class XLUtil:
     # WORKSHEET METHODS
     def get_sheets(self):
         """Return a list of all the worksheets
+
         """
         return self.workbook.sheetnames
 
@@ -136,6 +143,8 @@ class XLUtil:
     
     def select_sheet(self, sheetName):
         """Set the sheetName as the active worksheet
+
+        @param sheetName: name of the worksheet to work in
         """
         if sheetName not in self.get_sheets():
             make_sheet(sheetname)
@@ -145,73 +154,127 @@ class XLUtil:
         
     def remove_sheet(self, sheetName):
         """Remove the sheet from the workbook
+
+        @param sheetName: name of the worksheet to remove
         """
         if sheetName in self.get_sheets():
             self.workbook.remove(self.workbook[sheetName])
 
 
+    # CELL VALUES
+    def get_coord(self, coordinate):
+        """Parse the coordinate string for column & row value
+
+        @param coordinate : string value of coordinate (eg "B2")
+        @return [column, row] : numeric values
+
+        Note: Does not catch no match (search returns NoneType)
+        """
+        # match any alpha char [a-z], one or more times (+) at start ^
+        col = re.search('^[a-zA-Z]+', coordinate).group()
+        
+        # match any digit (\d), one or more times (+) at end $
+        row = re.search('\d+$', coordinate).group()
+        
+        return [column_index_from_string(col), int(row)]
+
+    
+    def make_coord(self, column, row):
+        """Make a coordinate string from a row & column integer
+
+        @param column : integer value of column
+        @param row : integer value of row
+        @return coord : string of format 'A1"
+        """                
+        return get_column_letter(column)+str(row)
+                
+
+    #TODO
+    def get_span(self, coords):
+        """Parse a span of coordinates for row & column values
+
+        @param coords : string of coords (eg "A1:B2")
+        @return [[col1, row1], [col2, row2]] : ints of cols & rows
+        """
+        # split string by ":"
+        # first half is coord1, 2nd half is coord2
+        # call get_coord method
+
+    def make_span(self, coord1, coord2):
+        pass
+    #/TODO
+    
     # READING AND WRITING METHODS
-    def write(self, column, row, value):
+    def write(self, coord, value):
         """Write to a cell in the active sheet
 
-        @param column : column value as a number (col A = 1)
-        @param row : row value as a number
+        @param coord : string of format 'A1"
         @param value : data to write to cell
         """
+        column, row = self.get_coord(coord)
         self.worksheet.cell(row=row, column=column).value = value
 
         
-    def read(self, column, row):
+    def read(self, coord):
         """Read from a cell in the active sheet
 
-        @param column : column value as a number (col A = 1)
-        @param row : row value as a number
+        @param coord : string of format 'A1"
         """
+        column, row = self.get_coord(coord)
         return self.worksheet.cell(row=row, column=column).value
 
     
-    def write_row(self, column, row, values):
+    def write_row(self, coord, values):
         """Write to the cells in a row
 
-        @param column : the first column to write
-        @param row : the row in which to write
+        @param coord : string of format 'A1"
         @param values : a list of values to write
         """
+        column, row = self.get_coord(coord)
         for i in range(len(values)):
-            self.write(column+i, row, values[i])
+            self.write(self.make_coord(column+i, row), values[i])
 
             
-    def read_row(self, column, row, length):
+    def read_row(self, coord, length):
         """Read the cells of a row
 
-        @param column : the first column to write
-        @param row : the row in which to write
+        @param coord : string of format 'A1"
         @param length : the number of cells to read
+        @return values : list of values read
         """
-        return [self.read(column+i, row) for i in range(length)]
+        column, row = self.get_coord(coord)
+        return [self.read( self.make_coord(column+i, row) )
+                for i in range(length)]
+
+    def write_column(self, coord, values):
+        """Write to the cells in a column
+
+        @param coord : string of format 'A1"
+        @param values : a list of values to write
+        """
+        column, row = self.get_coord(coord)
+        for i in range(len(values)):            
+            self.write(self.make_coord(column, row+i), values[i])
+    
+            
+    def read_column(self, coord, length):
+        """Read the cells of a row
+
+        @param coord : string of format 'A1"
+        @param length : the number of cells to read
+        @return values : list of values read
+        """
+        column, row = self.get_coord(coord)
+        return [self.read( self.make_coord(column, row+i) )
+                for i in range(length)]
 
     
-    def write_column(self, column, row, values):
-        """Write to the cells in a columnumn
+    #TODO
+    # write table
+    # read table
+    #/TODO
 
-        @param column : the columnumn to write
-        @param row : the first row in which to write
-        @param values : a list of values to write
-        """
-        for i in range(len(values)):
-            self.write(column, row+i, values[i])
-
-            
-    def read_column(self, column, row, length):
-        """Read the cells of a row
-
-        @param column : the columnumn to read
-        @param row : the first row in which to read
-        @param length : the number of cells to read from
-        """
-        return [self.read(column, row+i) for i in range(length)]
-
-
+    
     #FORMATING METHODS
     def style(self, column, row, font=FONT, align=ALIGN,
                num=FORMAT, fill=FILL):
@@ -225,52 +288,53 @@ class XLUtil:
         cell.fill = fill
 
         
-'''
-UNDER CONSTRUCTION
+    def style_row(self, column, row, length,
+                  font=FONT, align=ALIGN, num=FORMAT, fill=FILL):
+        """Style a row of cells of a certain length
 
+        @param column : column to start format
+        @param row : row to format
+        @param length : # of cells to format
+        """
+        for i in range(length):
+            self.style(column+i, row, font, align, num, fill)
 
-    ##########
-    # freeze the top and side panels, specifying their sizes by the corner cell
-    ##########
+            
+    def style_column(self, column, row, length,
+                  font=FONT, align=ALIGN, num=FORMAT, fill=FILL):
+        """Style a column of cells of a certain length
+
+        @param column : column to format
+        @param row : row to start format
+        @param length : # of cells to format
+        """
+        for i in range(length):
+            self.style(column, row+i, font, align, num, fill)
+
+            
     def freeze(self, column, row):
-        column_letter = get_columnumn_letter(column)
+        """Freeze the rows and columns before the cell value given
+
+        @param column : column value to freeze the columns before
+        @param row : row value to freeze the rows before
+        """
+        column_letter = get_column_letter(column)
         coord = column_letter + str(row)
-#        print(coord)
         self.worksheet.freeze_panes = coord
 
-    ##########
-    # format a cell by applying font, alignment, number style, and columnor filling
-    ##########
-    def format_cell(self, column, row,
 
-    ##########
-    # format an entire row of cells
-    ##########
-    def format_row(self, column, row, length,
-                   fnt=dfFont, algn=dfAlgn,
-                   num=dfNum, fll=dfFill):
-        for i in range(0, length):
-            self.format_cell(column+i, row, fnt, algn, num, fll)
-
-    ##########
-    # format a columnumn of cells
-    ##########
-    def format_column(self, column, row, length,
-                   fnt=dfFont, algn=dfAlgn,
-                   num=dfNum, fll=dfFill):
-        for i in range(0, length):
-            self.format_cell(column, row+i, fnt, algn, num, fll)
-
-    ##########
-    # set the width of a columnumn, if auto is made true the columnumn will auto size to the largest cell value
-    ##########
     def set_column_width(self, column, w=10, auto=False):
-        column_letter = get_columnumn_letter(column)
-        logging.debug(column_letter)
-        if(auto ==True):
+        """Set the width of a column or autosize it (but not > 50)
+
+        @param column : column to size
+        @param width : width (in ?) to set
+        @param auto : auto size column True/False
+        """
+        column_letter = get_column_letter(column)
+        if(auto == True):
             max_length = 0
-            columnumn = self.worksheet[column_letter]
-            for cell in columnumn:
+            column = self.worksheet[column_letter]
+            for cell in column:
                 try: # Necessary to avoid error on empty cells
                     if len(str(cell.value)) > max_length:
                         max_length = len(cell.value)
@@ -278,9 +342,20 @@ UNDER CONSTRUCTION
                     pass
             if(max_length > 50):
                 max_length = 50
-            adjusted_width = (max_length + 2) * 1.2
+            adjusted_width = (max_length + 2) * 1.1
             w = adjusted_width            
-        self.worksheet.columnumn_dimensions[column_letter].width = w       
+        self.worksheet.column_dimensions[column_letter].width = w 
+
+'''
+UNDER CONSTRUCTION
+
+
+
+
+    ##########
+    # set the width of a columnumn, if auto is made true the columnumn will auto size to the largest cell value
+    ##########
+     
 
     ##########
     # return a list of names that were defined for a region of cells
@@ -419,4 +494,23 @@ UNDER CONSTRUCTION
                     fill = whiteFill
                 self.format_row(columnumn, row+1+i, numColumns,
                                 algn=centerAlign, fll=fill)
+
+
+TODO
+"""Append rows"""
+this.worksheet.append(row)
+
+"""Copy a worksheet"""
+source = this.worksheet
+target = this.workbook.copy_worksheet(source)
+
+""Rename a worksheet"""
+this.worksheet.title = "new name"
+
+"""Merge cells"""
+this.worksheet.merge_cells('A2:D2')
+this.worksheet.unmerge_cells('A1:D2')
+
+"""Charts"""
+This is a definite branch worthy feature
 '''
