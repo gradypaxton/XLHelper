@@ -68,7 +68,7 @@ class XLUtil:
 
     This class is particularily good for saving time by incorporating
     the active worksheet into each function so it doesn't have to 
-    keep being specified
+    keep being specified  
     '''
 
     def __init__(self, excelPath, logFile='XLUtil_log.txt'):
@@ -160,7 +160,23 @@ class XLUtil:
         if sheetName in self.get_sheets():
             self.workbook.remove(self.workbook[sheetName])
 
+    def copy_sheet(self, src, dest):
+        """Copy a sheet
 
+        @param src : sheet to be copied
+        @param dst : sheet to copy to
+        """
+        dest = this.workbook.copy_worksheet(src)
+
+        
+    def rename_sheet(self, newName):
+        """Rename the active worksheet
+
+        @param newName : string
+        """
+        self.worksheet.title = newName
+
+        
     # CELL VALUES
     def get_coord(self, coordinate):
         """Parse the coordinate string for column & row value
@@ -189,20 +205,29 @@ class XLUtil:
         return get_column_letter(column)+str(row)
                 
 
-    #TODO
     def get_span(self, coords):
         """Parse a span of coordinates for row & column values
 
         @param coords : string of coords (eg "A1:B2")
-        @return [[col1, row1], [col2, row2]] : ints of cols & rows
+        @return [col1, row1], [col2, row2] : ints of cols & rows
         """
-        # split string by ":"
-        # first half is coord1, 2nd half is coord2
-        # call get_coord method
+        idx = coords.index(':')
+        coord1 = self.get_coord(coords[0:idx])
+        coord2 = self.get_coord(coords[idx+1:])
+        return coord1, coord2
 
+    
     def make_span(self, coord1, coord2):
-        pass
-    #/TODO
+        """Make a span of coordinates from row & column values
+
+        @param coord1 : list [column, row] of starting numeric vals
+        @param coord2 : list [column, row] of ending numeric vals
+        @return span : string of form "A1:B2"
+        """
+        coord1 = self.make_coord(coord1[0], coord1[1])
+        coord2 = self.make_coord(coord2[0], coord2[1])
+        return coord1 + ':' + coord2
+
     
     # READING AND WRITING METHODS
     def write(self, coord, value):
@@ -269,57 +294,101 @@ class XLUtil:
                 for i in range(length)]
 
     
-    #TODO
-    # write table
-    # read table
-    #/TODO
+    def write_block(self, coord, values):
+        """Write to the cells in both columns and rows
+
+        @param coord : starting cell, string of format "A1"
+        @param values : list of lists to write, [ [1,2], [3,4] ]
+
+        Note: values don't have to be equal in length
+        """
+        column, row = self.get_coord(coord)
+        for i in range(len(values)):
+            for j in range(len(values[i])):
+                self.write(self.make_coord(column+j, row+i),
+                           values[i][j])
+
+                
+    def read_block(self, span):
+        """Read from the cells specified by the span
+
+        @param span : string of format 'A1:B2'
+        @return table : list of lists, list of rows read
+        """
+        ([col1, row1], [col2, row2]) = self.get_span(span)        
+        table_width = col2 - col1 + 1
+        table_height = row2 - row1 + 1
+        return [self.read_row(self.make_coord(col1, row1+i),
+                              table_width)
+                for i in range(table_height)]
 
     
+    def append_row(self, values):
+        """Append a row to the last row of the active sheet
+
+        @param values : list of values
+        """
+        self.worksheet.append(row)
+
+        
     #FORMATING METHODS
-    def style(self, column, row, font=FONT, align=ALIGN,
+    def merge(self, span):
+        """Merge a span of cells to create one cell
+
+        @param span : string value of cells ('A1:B2')
+        """
+        self.worksheet.merge_cells(span)
+
+
+    def unmerge(self, span):
+        """Unmerge a span of cells to create many cells
+
+        @param span : string value of cells ('A1:B2')
+        """
+        self.worksheet.unmerge_cells(span)
+
+        
+    def style(self, coord, font=FONT, align=ALIGN,
                num=FORMAT, fill=FILL):
         """Style a cell with font, alignment, fill, and format
 
+        @param coord : string value of cell ('A1')
+        @param span : string value of cells ('A1:B2')
+        @param font : the font class of openpyxl
+        @param align : the align class of openpyxl
+        @param num : the format class of openpyxl
+        @param fill : the fill class of openpyxl
         """
+        column, row = self.get_coord(coord)
         cell = self.worksheet.cell(row=row, column=column)
         cell.font = font
         cell.alignment = align
         cell.number_format = num
         cell.fill = fill
 
-        
-    def style_row(self, column, row, length,
-                  font=FONT, align=ALIGN, num=FORMAT, fill=FILL):
-        """Style a row of cells of a certain length
 
-        @param column : column to start format
-        @param row : row to format
-        @param length : # of cells to format
+    def style_block(self, span, font=FONT, align=ALIGN,
+                    num=FORMAT, fill=FILL):
+        """Style a span of cells
+
+        @param span : string value of cells ('A1:B2')
+        @param font : the font class of openpyxl
+        @param align : the align class of openpyxl
+        @param num : the format class of openpyxl
+        @param fill : the fill class of openpyxl
         """
-        for i in range(length):
-            self.style(column+i, row, font, align, num, fill)
+        ([col1, row1], [col2, row2]) = self.get_span(span)
+        for i in range(col2-col1+1):
+            for j in range(row2 - row1 + 1):
+                self.style(self.make_coord(col1 + i, row1 + j),
+                           font, align, num, fill)
 
             
-    def style_column(self, column, row, length,
-                  font=FONT, align=ALIGN, num=FORMAT, fill=FILL):
-        """Style a column of cells of a certain length
-
-        @param column : column to format
-        @param row : row to start format
-        @param length : # of cells to format
-        """
-        for i in range(length):
-            self.style(column, row+i, font, align, num, fill)
-
-            
-    def freeze(self, column, row):
+    def freeze(self, coord):
         """Freeze the rows and columns before the cell value given
 
-        @param column : column value to freeze the columns before
-        @param row : row value to freeze the rows before
+        @param coord : string value of cell ('A1')
         """
-        column_letter = get_column_letter(column)
-        coord = column_letter + str(row)
         self.worksheet.freeze_panes = coord
 
 
@@ -349,17 +418,6 @@ class XLUtil:
 '''
 UNDER CONSTRUCTION
 
-
-
-
-    ##########
-    # set the width of a columnumn, if auto is made true the columnumn will auto size to the largest cell value
-    ##########
-     
-
-    ##########
-    # return a list of names that were defined for a region of cells
-    ##########
     def get_ranges(self):
 #        print(self.workbook.defined_names.localnames(self.worksheet))
         return self.workbook.defined_names.definedName
@@ -497,19 +555,6 @@ UNDER CONSTRUCTION
 
 
 TODO
-"""Append rows"""
-this.worksheet.append(row)
-
-"""Copy a worksheet"""
-source = this.worksheet
-target = this.workbook.copy_worksheet(source)
-
-""Rename a worksheet"""
-this.worksheet.title = "new name"
-
-"""Merge cells"""
-this.worksheet.merge_cells('A2:D2')
-this.worksheet.unmerge_cells('A1:D2')
 
 """Charts"""
 This is a definite branch worthy feature
